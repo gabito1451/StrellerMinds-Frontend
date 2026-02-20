@@ -149,33 +149,29 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
-        {/* Keep both: EnvironmentValidator component + initialized server env */}
+  <body className={`${inter.variable} ${sourceCodePro.variable}`}>
+    <StyledComponentsRegistry>
+      <Providers>
         <EnvironmentValidator />
 
-        <Providers>
-          <StyledComponentsRegistry>
-            {/* Accessibility Skip Link */}
-            <a
-              href="#main-content"
-              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-16 focus:bg-[#5c0f49] focus:text-white focus:p-4 focus:outline-none focus:z-100"
-            >
-              Skip to content
-            </a>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-16 focus:bg-[#5c0f49] focus:text-white focus:p-4 focus:outline-none focus:z-50"
+        >
+          Skip to content
+        </a>
 
-            <MainLayoutWrapper>
-              {children}
-            </MainLayoutWrapper>
-            <Toaster position="top-right" />
+        <MainLayoutWrapper>
+          {children}
+        </MainLayoutWrapper>
 
-            {/* Privacy-compliant Analytics */}
-            <Analytics />
+        <Toaster position="top-right" />
+        <Analytics />
+        <CookieBanner />
+      </Providers>
+    </StyledComponentsRegistry>
+  </body>
+</html>
 
-            {/* Cookie Consent Banner */}
-            <CookieBanner />
-          </StyledComponentsRegistry>
-        </Providers>
-      </body>
-    </html>
   );
 }

@@ -1,0 +1,123 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { otpSchema } from "@/schemas/otp.schema";
+import { verifyOtp } from "@/services/auth.service";
+import { useRouter } from "next/navigation";
+import { z } from "zod";
+
+type FormData = z.infer<typeof otpSchema>;
+
+export default function OtpPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+
+  const {
+    handleSubmit,
+    setValue,
+    setError,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: { otp: "" },
+  });
+
+  const handleChange = (value: string, index: number) => {
+    if (!/^\d?$/.test(value)) return;
+
+    const otpArray = inputsRef.current.map((input) => input?.value || "");
+    otpArray[index] = value;
+
+    const otpString = otpArray.join("");
+    setValue("otp", otpString);
+
+    if (value && index < 5) {
+      inputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Backspace" && !e.currentTarget.value && index > 0) {
+      inputsRef.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").slice(0, 6);
+
+    if (!/^\d+$/.test(pasted)) return;
+
+    pasted.split("").forEach((digit, index) => {
+      if (inputsRef.current[index]) {
+        inputsRef.current[index]!.value = digit;
+      }
+    });
+
+    setValue("otp", pasted);
+  };
+
+  const onSubmit = async (data: FormData) => {
+    try {
+      setLoading(true);
+      await verifyOtp(data.otp);
+      router.replace("/dashboard");
+    } catch (err: any) {
+      setError("otp", { message: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-md">
+      <h1 className="text-xl font-semibold mb-2 text-center">
+        Verify OTP
+      </h1>
+      <p className="text-sm text-gray-500 text-center mb-6">
+        Enter the 6-digit code sent to your email
+      </p>
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex justify-between gap-2 mb-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <input
+              key={index}
+ref={(el) => {
+  inputsRef.current[index] = el;
+}}
+              maxLength={1}
+              inputMode="numeric"
+              className="w-12 h-12 text-center border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-black transition"
+              onChange={(e) =>
+                handleChange(e.target.value, index)
+              }
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              onPaste={handlePaste}
+            />
+          ))}
+        </div>
+
+        {errors.otp && (
+          <p className="text-red-500 text-sm text-center mb-4">
+            {errors.otp.message}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-black text-white py-3 rounded-lg transition disabled:opacity-50"
+        >
+          {loading ? "Verifying..." : "Verify"}
+        </button>
+      </form>
+    </div>
+  );
+}
