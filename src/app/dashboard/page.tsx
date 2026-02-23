@@ -50,6 +50,8 @@ import { ContributorDashboard } from '@/components/dashboard/contributor/Contrib
 
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { motion, AnimatePresence } from 'framer-motion';
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
