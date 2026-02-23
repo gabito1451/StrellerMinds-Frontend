@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Editor from '@monaco-editor/react';
+import dynamic from 'next/dynamic';
 import * as Y from 'yjs';
 import { MonacoBinding } from 'y-monaco';
 import { useCollaboration } from '@/contexts/collaboration-context';
@@ -10,6 +10,13 @@ import { Copy, Play, Square, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SupportedLanguage } from '@/lib/sandbox';
 import { SocketIOProvider } from '@/lib/collaboration/yjs-socket-provider';
+
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full animate-pulse bg-muted rounded-md" />
+  ),
+});
 
 interface CollaborativeEditorProps {
   language: SupportedLanguage;
@@ -27,18 +34,14 @@ export default function CollaborativeEditor({
   onStop,
 }: CollaborativeEditorProps) {
   const editorRef = useRef<any>(null);
+  const initializeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const yDocRef = useRef<Y.Doc | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
   const bindingRef = useRef<MonacoBinding | null>(null);
   const providerRef = useRef<SocketIOProvider | null>(null);
   const [code, setCode] = useState('');
-  const {
-    state,
-    updateCursor,
-    updateSelection,
-    canUserEdit,
-    getCurrentCode,
-  } = useCollaboration();
+  const { state, updateCursor, updateSelection, canUserEdit, getCurrentCode } =
+    useCollaboration();
 
   // Initialize Yjs document and provider
   useEffect(() => {
@@ -72,8 +75,8 @@ export default function CollaborativeEditor({
 
     // Initialize with current session code if available (only if Yjs is empty)
     // Wait a bit for sync to complete, then initialize if still empty
-    setTimeout(() => {
-      if (yText.length === 0 && state.session.code) {
+initializeTimeoutRef.current = setTimeout(() => {
+      if (yText.length === 0 && state.session?.code) {
         yText.insert(0, state.session.code);
       }
     }, 500);
@@ -95,6 +98,10 @@ export default function CollaborativeEditor({
         bindingRef.current.destroy();
         bindingRef.current = null;
       }
+      if (initializeTimeoutRef.current) {
+        clearTimeout(initializeTimeoutRef.current);
+        initializeTimeoutRef.current = null;
+      }
       if (providerRef.current) {
         providerRef.current.destroy();
         providerRef.current = null;
@@ -111,12 +118,15 @@ export default function CollaborativeEditor({
   const handleEditorDidMount = useCallback(
     (editor: any, monaco: any) => {
       editorRef.current = editor;
+      let isUnmounted = false;
+      let retryTimeout: NodeJS.Timeout | null = null;
 
       // Wait for Yjs to be ready, then create binding
       const setupBinding = () => {
+        if (isUnmounted) return;
         if (!yTextRef.current || !state.session || !providerRef.current) {
           // Retry after a short delay if Yjs isn't ready yet
-          setTimeout(setupBinding, 100);
+          retryTimeout = setTimeout(setupBinding, 100);
           return;
         }
 
@@ -190,8 +200,21 @@ export default function CollaborativeEditor({
 
       // Make editor read-only if user can't edit
       editor.updateOptions({ readOnly: !canUserEdit() });
+
+      editor.onDidDispose(() => {
+        isUnmounted = true;
+        if (retryTimeout) {
+          clearTimeout(retryTimeout);
+        }
+      });
     },
-    [state.session, state.currentUser, canUserEdit, updateCursor, updateSelection],
+    [
+      state.session,
+      state.currentUser,
+      canUserEdit,
+      updateCursor,
+      updateSelection,
+    ],
   );
 
   // Handle code changes (Yjs handles this automatically, but we keep this for compatibility)
@@ -222,8 +245,8 @@ export default function CollaborativeEditor({
         <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted rounded-md flex-wrap">
           <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
           <span className="text-xs sm:text-sm">
-            {state.session.users.length} user{state.session.users.length !== 1 ? 's' : ''} in
-            session
+            {state.session.users.length} user
+            {state.session.users.length !== 1 ? 's' : ''} in session
           </span>
           <div className="flex gap-1 ml-auto">
             {Array.from(state.users.values()).map((user) => (
@@ -250,19 +273,25 @@ export default function CollaborativeEditor({
           theme="vs-dark"
           options={{
             minimap: { enabled: false },
-            fontSize: typeof window !== 'undefined' && window.innerWidth < 640 ? 16 : 14,
+            fontSize:
+              typeof window !== 'undefined' && window.innerWidth < 640
+                ? 16
+                : 14,
             wordWrap: 'on',
             automaticLayout: true,
             tabSize: 2,
             scrollBeyondLastLine: false,
-            lineNumbers: typeof window !== 'undefined' && window.innerWidth < 640 ? 'off' : 'on',
+            lineNumbers:
+              typeof window !== 'undefined' && window.innerWidth < 640
+                ? 'off'
+                : 'on',
             renderLineHighlight: 'line',
             folding: true,
             bracketPairColorization: { enabled: true },
             readOnly: !canUserEdit(),
             // Disable default undo/redo - Yjs handles this
-            undoStopBefore: false,
-            undoStopAfter: false,
+            // undoStopBefore and undoStopAfter are not valid Monaco options
+            // They were incorrectly added for Yjs integration
             // Mobile optimizations
             mouseWheelZoom: false,
             contextmenu: true,
@@ -279,9 +308,9 @@ export default function CollaborativeEditor({
 
       <div className="flex gap-2 flex-wrap">
         {isExecuting ? (
-          <Button 
-            onClick={onStop} 
-            variant="destructive" 
+          <Button
+            onClick={onStop}
+            variant="destructive"
             className="gap-2 min-h-[44px] sm:min-h-0 touch-manipulation"
           >
             <Square className="h-4 w-4" />
@@ -297,9 +326,9 @@ export default function CollaborativeEditor({
             Run Code
           </Button>
         )}
-        <Button 
-          variant="outline" 
-          onClick={copyCode} 
+        <Button
+          variant="outline"
+          onClick={copyCode}
           className="gap-2 min-h-[44px] sm:min-h-0 touch-manipulation"
         >
           <Copy className="h-4 w-4" />

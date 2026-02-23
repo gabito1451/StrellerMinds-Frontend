@@ -25,10 +25,12 @@ import { initializeServerEnvironment } from '../lib/env-server';
 import StyledComponentsRegistry from '../lib/registry';
 import MainLayoutWrapper from '../components/MainLayoutWrapper';
 
+// Initialize fonts
+const inter = Inter({ subsets: ['latin'] });
+const sourceCodePro = Source_Code_Pro({ subsets: ['latin'] });
+
 // Initialize server environment validation
 initializeServerEnvironment();
-
-
 
 // Determine the base URL based on environment
 const getBaseUrl = () => {
