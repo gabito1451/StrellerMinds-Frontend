@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { updateVideoProgress } from '@/services/videoProgress';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface VideoPlayerProps {
   videoId: string;
@@ -107,84 +108,102 @@ export default function VideoPlayer({
 
   return (
     <div
-      className="relative bg-black rounded-lg overflow-hidden group"
+      className="relative bg-black rounded-xl overflow-hidden group shadow-2xl border border-white/10"
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
     >
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        className="w-full h-auto"
-        onClick={togglePlay}
-        preload="metadata"
-      />
+      {/* Aspect Ratio Container for Video */}
+      <div className="aspect-video w-full relative">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="w-full h-full object-contain"
+          onClick={togglePlay}
+          preload="metadata"
+          playsInline
+        />
 
-      {/* Custom Controls */}
+        {/* Play Button Overlay - Larger for touch */}
+        <AnimatePresence>
+          {!isPlaying && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] z-10"
+            >
+              <Button
+                onClick={togglePlay}
+                className="bg-primary/90 hover:bg-primary text-white border border-white/20 rounded-full w-20 h-20 md:w-24 md:h-24 shadow-2xl transition-transform active:scale-95"
+              >
+                <Play className="w-10 h-10 md:w-12 md:h-12 ml-1" fill="currentColor" />
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Custom Controls - More touch friendly */}
       <div
-        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0'
-        }`}
+        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 md:p-6 transition-all duration-300 z-20 ${showControls || !isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+          }`}
       >
-        {/* Progress Bar */}
+        {/* Progress Bar Container with larger hit area */}
         <div
-          className="w-full h-2 bg-gray-600 rounded-full mb-3 cursor-pointer"
+          className="w-full h-6 flex items-center mb-2 md:mb-4 cursor-pointer group/progress"
           onClick={handleProgressClick}
         >
-          <div
-            className="h-full bg-[#ffcc00] rounded-full transition-all duration-100"
-            style={{ width: `${(currentTime / duration) * 100}%` }}
-          />
+          <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden relative group-hover/progress:h-2 transition-all">
+            <div
+              className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all duration-100 flex items-center justify-end"
+              style={{ width: `${(currentTime / duration) * 100}%` }}
+            >
+              <div className="w-3 h-3 bg-white rounded-full shadow-lg scale-0 group-hover/progress:scale-100 transition-transform flex-shrink-0" />
+            </div>
+          </div>
         </div>
 
-        {/* Controls */}
+        {/* Controls Row */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-4">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={togglePlay}
-              className="text-white hover:text-[#ffcc00] p-2"
+              className="text-white hover:bg-white/10 p-2 h-10 w-10 md:h-12 md:w-12 rounded-full"
             >
               {isPlaying ? (
-                <Pause className="w-5 h-5" />
+                <Pause className="w-6 h-6 md:w-7 md:w-7" fill="currentColor" />
               ) : (
-                <Play className="w-5 h-5" />
+                <Play className="w-6 h-6 md:w-7 md:w-7" fill="currentColor" />
               )}
             </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleMute}
-              className="text-white hover:text-[#ffcc00] p-2"
-            >
-              {isMuted ? (
-                <VolumeX className="w-5 h-5" />
-              ) : (
-                <Volume2 className="w-5 h-5" />
-              )}
-            </Button>
+            <div className="flex items-center gap-1 md:gap-2 group/volume">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleMute}
+                className="text-white hover:bg-white/10 p-2 h-10 w-10 md:h-12 md:w-12 rounded-full"
+              >
+                {isMuted ? (
+                  <VolumeX className="w-6 h-6 md:w-7 md:w-7" />
+                ) : (
+                  <Volume2 className="w-6 h-6 md:w-7 md:w-7" />
+                )}
+              </Button>
+            </div>
 
-            <span className="text-white text-sm">
-              {formatTime(currentTime)} / {formatTime(duration)}
+            <span className="text-white text-sm md:text-base font-medium tabular-nums shadow-sm">
+              {formatTime(currentTime)} <span className="text-white/60">/</span> {formatTime(duration)}
             </span>
           </div>
 
-          <div className="text-white text-sm font-medium">{title}</div>
+          <div className="hidden sm:block text-white text-sm md:text-base font-semibold truncate max-w-[200px] md:max-w-md drop-shadow-md">
+            {title}
+          </div>
         </div>
       </div>
-
-      {/* Play Button Overlay */}
-      {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Button
-            onClick={togglePlay}
-            className="bg-[#5c0f49]/80 hover:bg-[#5c0f49] text-[#ffcc00] border border-[#ffcc00]/20 rounded-full w-16 h-16"
-          >
-            <Play className="w-8 h-8 ml-1" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

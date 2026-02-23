@@ -11,8 +11,9 @@ export default function MainLayoutWrapper({
 }) {
   const pathname = usePathname();
   const isCms = pathname?.startsWith('/cms');
+  const isDashboard = pathname?.startsWith('/dashboard');
 
-  if (isCms) {
+  if (isCms || isDashboard) {
     return <>{children}</>;
   }
 

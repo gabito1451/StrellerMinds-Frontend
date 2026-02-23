@@ -3,8 +3,17 @@ import type { Metadata } from 'next';
 import { Inter, Source_Code_Pro } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
-const sourceCodePro = Source_Code_Pro({ subsets: ['latin'] });
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
+const sourceCodePro = Source_Code_Pro({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-source-code-pro',
+});
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 import CookieBanner from '../components/CookieBanner';
@@ -154,8 +163,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* <body className={`${inter.variable} ${sourceCodePro.variable}`}> */}
-      <body className={`${inter} ${sourceCodePro}`}>
+      <body className={`${inter.variable} ${sourceCodePro.variable}`}>
         <StyledComponentsRegistry>
           <Providers>
             <EnvironmentValidator />
@@ -167,7 +175,9 @@ export default function RootLayout({
               Skip to content
             </a>
 
-            <MainLayoutWrapper>{children}</MainLayoutWrapper>
+            <MainLayoutWrapper>
+              {children}
+            </MainLayoutWrapper>
 
             <Toaster position="top-right" />
             <Analytics />
@@ -176,5 +186,6 @@ export default function RootLayout({
         </StyledComponentsRegistry>
       </body>
     </html>
+
   );
 }
